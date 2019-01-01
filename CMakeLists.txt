@@ -14,12 +14,20 @@ set(LINKER_FLAGS
 		-lstdc++
 		-lm)
 
-find_package(PkgConfig REQUIRED)
-pkg_search_module(GLFW REQUIRED glfw3)
+if (${UNIX})
+	find_package(PkgConfig REQUIRED)
+	pkg_search_module(GLFW REQUIRED glfw3)
 
-if (${GLFW_FOUND})
-	include_directories(${GLFW_INCLUDE_DIRS})
-	set(LINKER_FLAGS ${LINKER_FLAGS} ${GLFW_LIBRARIES})
+	if (${GLFW_FOUND})
+		set(LINKER_FLAGS ${LINKER_FLAGS} ${GLFW_LIBRARIES})
+	else ()
+		message(AUTHOR_WARNING "GLFW not found")
+	endif ()
+
+elseif (${WIN32})
+	include_directories(C:/VulkanSDK/1.1.92.1/Include)
+	include_directories(./glfw-3.2.1.bin.WIN64/include)
+	set(LINKER_FLAGS ${LINKER_FLAGS} ./glfw-3.2.1.bin.WIN64/lib-mingw-w64/glfw3.dll)
 endif ()
 
 find_package(Vulkan REQUIRED)
@@ -27,6 +35,8 @@ find_package(Vulkan REQUIRED)
 if (${Vulkan_FOUND})
 	include_directories(${Vulkan_INCLUDE_DIRS})
 	set(LINKER_FLAGS ${LINKER_FLAGS} ${Vulkan_LIBRARIES})
+else ()
+	message(AUTHOR_WARNING "Vulkan not found")
 endif ()
 
 
