@@ -25,9 +25,9 @@ if (${UNIX})
 	endif ()
 
 elseif (${WIN32})
-	include_directories(C:/VulkanSDK/1.1.92.1/Include)
+	include_directories($ENV{VULKAN_SDK}/Include)
 	include_directories(./glfw-3.2.1.bin.WIN64/include)
-	set(LINKER_FLAGS ${LINKER_FLAGS} ./glfw-3.2.1.bin.WIN64/lib-mingw-w64/glfw3.dll)
+	set(LINKER_FLAGS ${LINKER_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/glfw-3.2.1.bin.WIN64/lib-mingw-w64/glfw3.dll)
 endif ()
 
 find_package(Vulkan REQUIRED)
