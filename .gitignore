@@ -1,4 +1,4 @@
 cmake-*
 .idea/
 glfw*
-!.idea/codeStyles/codeStyleConfig.xml
+!'.idea/codeStyles/codeStyleConfig.xml'
