@@ -1,3 +1,4 @@
 cmake-*
 .idea/
 glfw*
+!.idea/codeStyles/codeStyleConfig.xml
