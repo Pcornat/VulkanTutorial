@@ -1,45 +1,52 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 project(VulkanTutorial)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(COMPILE_FLAGS
-		PRIVATE -pipe
-		PRIVATE -march=native
-		PRIVATE -Wall
-		PRIVATE -Wextra)
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+	set(COMPILE_FLAGS
+		-pipe
+		-march=native
+		-Wall
+		-Wextra
+		-pedantic)
 
-set(LINKER_FLAGS
-		-Wl,--as-needed
-		-lstdc++
-		-lm)
+	set(LINKER_OPTIONS
+		-Wl,--sort-common,--as-needed)
+	set(LINKER_FLAGS
+		stdc++
+		m)
 
-if (${UNIX})
-	find_package(PkgConfig REQUIRED)
-	pkg_search_module(GLFW REQUIRED glfw3)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+	set(COMPILE_FLAGS
+		-pipe
+		-march=native
+		-m64
+		-xHost
+		-Wall
+		-Wextra
+		-pedantic)
 
-	if (${GLFW_FOUND})
-		set(LINKER_FLAGS ${LINKER_FLAGS} ${GLFW_LIBRARIES})
-	else ()
-		message(AUTHOR_WARNING "GLFW not found")
-	endif ()
+	set(LINKER_OPTIONS
+		-Wl,--sort-common,--as-needed
+		-shared-intel
+		-cxx-glibc)
 
-elseif (${WIN32})
-	include_directories($ENV{VULKAN_SDK}/Include)
-	include_directories(./glfw-3.2.1.bin.WIN64/include)
-	set(LINKER_FLAGS ${LINKER_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/glfw-3.2.1.bin.WIN64/lib-mingw-w64/glfw3.dll)
+	set(LINKER_FLAGS
+		m)
 endif ()
+
+find_package(PkgConfig REQUIRED)
+pkg_search_module(GLFW REQUIRED glfw3)
+set(LINKER_FLAGS ${LINKER_FLAGS} ${GLFW_LIBRARIES})
 
 find_package(Vulkan REQUIRED)
+find_package(glm REQUIRED)
 
-if (${Vulkan_FOUND})
-	include_directories(${Vulkan_INCLUDE_DIRS})
-	set(LINKER_FLAGS ${LINKER_FLAGS} ${Vulkan_LIBRARIES})
-else ()
-	message(AUTHOR_WARNING "Vulkan not found")
-endif ()
+include_directories(${Vulkan_INCLUDE_DIR} ${GLM_INCLUDE_DIRS})
 
 
 add_executable(VulkanTutorial main.cpp hello_triangle_app.cpp hello_triangle_app.h)
-target_compile_options(VulkanTutorial ${COMPILE_FLAGS})
-target_link_libraries(VulkanTutorial ${LINKER_FLAGS})
+target_compile_options(VulkanTutorial PRIVATE ${COMPILE_FLAGS})
+target_link_options(VulkanTutorial PRIVATE ${LINKER_OPTIONS})
+target_link_libraries(VulkanTutorial ${LINKER_FLAGS} Vulkan::Vulkan)

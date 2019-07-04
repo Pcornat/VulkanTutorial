@@ -1,3 +1,5 @@
+#include <utility>
+
 //
 // Created by Florent on 29/12/2018.
 //
@@ -6,7 +8,7 @@
 #include <iostream>
 #include <cstring>
 
-const std::string HelloTriangleApp::appName = "Vulkan Tutorial";
+const std::string HelloTriangleApp::appName{ "Vulkan Tutorial" };
 
 void HelloTriangleApp::run() {
 	initWindow();
@@ -34,7 +36,7 @@ void HelloTriangleApp::createInstance() {
 
 
 	uint32_t glfwExtensionCount = 0;
-	const char** glfwExtensions;
+	const char **glfwExtensions;
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
 	createInfo.enabledExtensionCount = glfwExtensionCount;
@@ -65,10 +67,10 @@ bool HelloTriangleApp::checkValidationLayersSupport() {
 	std::vector<vk::LayerProperties> availableLayers(layerCount);
 	vk::enumerateInstanceLayerProperties(&layerCount, availableLayers.data());*/
 
-	for (const char* layerName : validationLayers) {
+	for (const char *layerName : validationLayers) {
 		bool layerFound = false;
 
-		for (const auto& layerProperties : availableLayers) {
+		for (const auto &layerProperties : availableLayers) {
 			if (strcmp(layerName, layerProperties.layerName) == 0) {
 				//LayerName is a char[256] useless to use std::string, it would add more compute time.
 				layerFound = true;
@@ -84,12 +86,12 @@ bool HelloTriangleApp::checkValidationLayersSupport() {
 	return true;
 }
 
-std::vector<const char*> HelloTriangleApp::getRequiredExtensions() {
+std::vector<const char *> HelloTriangleApp::getRequiredExtensions() {
 	uint32_t glfwExtensionCount = 0;
-	const char** glfwExtensions;
+	const char **glfwExtensions;
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-	std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+	std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
 	if (enableValidationLayers) {
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -100,6 +102,12 @@ std::vector<const char*> HelloTriangleApp::getRequiredExtensions() {
 
 void HelloTriangleApp::initVulkan() {
 	createInstance();
+	setupDebugCallback();
+	pickPhysicalDevice();
+}
+
+void HelloTriangleApp::pickPhysicalDevice() {
+	auto devices = this->instance.enumeratePhysicalDevices();
 }
 
 /*VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pCallback) {
@@ -128,7 +136,7 @@ void HelloTriangleApp::setupDebugCallback() {
 	auto CreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
 	if (CreateDebugUtilsMessengerEXT != nullptr) {
 		const VkDebugUtilsMessengerCreateInfoEXT tmp(createInfoEXT);
-		if (CreateDebugUtilsMessengerEXT(instance, &tmp, nullptr, &this->callback) != VK_SUCCESS)
+		if (CreateDebugUtilsMessengerEXT(instance, &tmp, nullptr, &this->callback) != VkResult::VK_SUCCESS)
 			throw std::runtime_error("failed to set up debug callback!");
 	} else {
 		throw std::runtime_error("Cannot find DebugUtilsMessengerEXT function");
@@ -167,16 +175,16 @@ void HelloTriangleApp::initWindow() {
 
 }
 
-HelloTriangleApp::HelloTriangleApp(const std::string& windowName, uint32_t l, uint32_t h) : windowName(windowName), l(l), h(h) {}
+HelloTriangleApp::HelloTriangleApp(std::string windowName, uint32_t l, uint32_t h) : windowName(std::move(windowName)), l(l), h(h) {}
 
 HelloTriangleApp::~HelloTriangleApp() {
 	this->cleanup();
 }
 
 vk::Bool32 HelloTriangleApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-										   VkDebugUtilsMessageTypeFlagsEXT messageType,
-										   const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-										   void* pUserData) {
+										   [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
+										   const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+										   [[maybe_unused]] void *pUserData) {
 	if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) { // VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
 		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 		return VK_FALSE;

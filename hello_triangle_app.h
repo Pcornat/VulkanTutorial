@@ -17,11 +17,12 @@
  */
 class HelloTriangleApp {
 private:
-	GLFWwindow* window = nullptr;
+	GLFWwindow *window = nullptr;
 	vk::Instance instance;
 	VkDebugUtilsMessengerEXT callback;
+	vk::PhysicalDevice physicalDevice;
 
-	const std::vector<const char*> validationLayers = {
+	const std::vector<const char *> validationLayers = {
 			"VK_LAYER_LUNARG_standard_validation"
 	};
 	const std::string windowName = "Hello";
@@ -41,9 +42,11 @@ private:
 
 	bool checkValidationLayersSupport();
 
-	std::vector<const char*> getRequiredExtensions();
+	std::vector<const char *> getRequiredExtensions();
 
 	void createInstance();
+
+	void pickPhysicalDevice();
 
 	void initWindow();
 
@@ -54,13 +57,13 @@ private:
 	static VKAPI_ATTR vk::Bool32 VKAPI_CALL
 	debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 				  VkDebugUtilsMessageTypeFlagsEXT messageType,
-				  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-				  void* pUserData);
+				  const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+				  void *pUserData);
 
 public:
 	HelloTriangleApp() = default;
 
-	HelloTriangleApp(const std::string& windowName, uint32_t l, uint32_t h);
+	HelloTriangleApp(std::string windowName, uint32_t l, uint32_t h);
 
 	virtual ~HelloTriangleApp();
 
