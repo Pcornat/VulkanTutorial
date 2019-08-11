@@ -19,12 +19,10 @@ class HelloTriangleApp {
 private:
 	GLFWwindow *window = nullptr;
 	vk::Instance instance;
-	VkDebugUtilsMessengerEXT callback;
+	VkDebugUtilsMessengerEXT callback{ nullptr };
 	vk::PhysicalDevice physicalDevice;
 
-	const std::vector<const char *> validationLayers = {
-			"VK_LAYER_LUNARG_standard_validation"
-	};
+	const std::vector<const char *> validationLayers{ "VK_LAYER_KHRONOS_validation" };
 	const std::string windowName = "Hello";
 	static const std::string appName;
 	uint32_t l = 800;

@@ -1,12 +1,7 @@
-#include <utility>
-
-//
-// Created by Florent on 29/12/2018.
-//
-
 #include "hello_triangle_app.h"
 #include <iostream>
 #include <cstring>
+#include <utility>
 
 const std::string HelloTriangleApp::appName{ "Vulkan Tutorial" };
 
@@ -42,19 +37,18 @@ void HelloTriangleApp::createInstance() {
 	createInfo.enabledExtensionCount = glfwExtensionCount;
 	createInfo.ppEnabledExtensionNames = glfwExtensions;
 
-	if (enableValidationLayers) {
-		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-		createInfo.setPpEnabledLayerNames(validationLayers.data());
+//	if (enableValidationLayers) {
+	createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+	createInfo.setPpEnabledLayerNames(validationLayers.data());
 
-		auto extensions = getRequiredExtensions();
-		createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-		createInfo.ppEnabledExtensionNames = extensions.data();
-	} else {
-		createInfo.enabledLayerCount = 0;
-	}
+	auto extensions = getRequiredExtensions();
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+	createInfo.ppEnabledExtensionNames = extensions.data();
+//	} else {
+//		createInfo.enabledLayerCount = 0;
+//	}
 
-	vk::createInstance(createInfo); //C++ bindings have exceptions enabled by defaults so no need to check the value anymore.
-
+	this->instance = vk::createInstance(createInfo); //C++ bindings have exceptions enabled by defaults so no need to check the value anymore.
 }
 
 
@@ -93,9 +87,8 @@ std::vector<const char *> HelloTriangleApp::getRequiredExtensions() {
 
 	std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-	if (enableValidationLayers) {
-		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-	}
+//	if (enableValidationLayers)
+	extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 	return extensions;
 }
@@ -120,20 +113,23 @@ void HelloTriangleApp::pickPhysicalDevice() {
 }*/
 
 void HelloTriangleApp::setupDebugCallback() {
-	if (!enableValidationLayers) return;
+//	if (!enableValidationLayers) return;
 
-	vk::DebugUtilsMessengerCreateInfoEXT createInfoEXT(vk::DebugUtilsMessengerCreateFlagsEXT(),
-													   vk::DebugUtilsMessageSeverityFlagsEXT(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-																							 vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
-																							 vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose));
+	vk::DebugUtilsMessengerCreateInfoEXT createInfoEXT{};
+	createInfoEXT.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+									vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
+									vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose;
+
+	createInfoEXT.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+								| vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance
+								| vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral;
+
 	createInfoEXT.setPNext(nullptr);
 	createInfoEXT.setPfnUserCallback(debugCallback);
 	createInfoEXT.setPUserData(nullptr);
 
-	/*if (CreateDebugUtilsMessengerEXT(instance, &createInfoEXT, nullptr, &callback) != VK_SUCCESS) {
-		throw std::runtime_error("failed to set up debug callback!");
-	}*/
-	auto CreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+	auto CreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(this->instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
+
 	if (CreateDebugUtilsMessengerEXT != nullptr) {
 		const VkDebugUtilsMessengerCreateInfoEXT tmp(createInfoEXT);
 		if (CreateDebugUtilsMessengerEXT(instance, &tmp, nullptr, &this->callback) != VkResult::VK_SUCCESS)
@@ -150,14 +146,14 @@ void HelloTriangleApp::mainLoop() {
 }
 
 void HelloTriangleApp::cleanup() {
-	if (enableValidationLayers) {
-		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-		if (func != nullptr) {
-			func(this->instance, this->callback, nullptr);
-		}
+//	if (enableValidationLayers) {
+	auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(this->instance.getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
+	if (func != nullptr) {
+		func(this->instance, this->callback, nullptr);
 	}
+//	}
 
-	instance.destroy();
+//	this->instance.destroy();
 
 	glfwDestroyWindow(this->window);
 
@@ -185,7 +181,7 @@ vk::Bool32 HelloTriangleApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEX
 										   [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
 										   const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
 										   [[maybe_unused]] void *pUserData) {
-	if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) { // VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+	if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) { // VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
 		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 		return VK_FALSE;
 	}
