@@ -15,9 +15,10 @@
 
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicsFamily;
+	std::optional<uint32_t> presentFamily;
 
 	[[gnu::always_inline]] inline bool isComplete() {
-		return graphicsFamily.has_value();
+		return graphicsFamily.has_value() && presentFamily.has_value();
 	}
 };
 
@@ -29,11 +30,14 @@ private:
 	GLFWwindow *window = nullptr;
 	vk::UniqueInstance instance;
 	vk::DebugUtilsMessengerEXT callback;
+	vk::SurfaceKHR surface;
 	vk::PhysicalDevice physicalDevice;
 	vk::UniqueDevice device;
 	vk::Queue graphicsQueue;
+	vk::Queue presentQueue;
 
 	std::vector<std::string> validationLayers{ "VK_LAYER_KHRONOS_validation" };
+	std::vector<std::string> deviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 	const std::string windowName = "Hello";
 	static const std::string appName;
 	uint32_t l = 800;
@@ -59,11 +63,13 @@ private:
 
 	void pickPhysicalDevice();
 
-	static bool isDeviceSuitable(const vk::PhysicalDevice &device);
+	bool isDeviceSuitable(const vk::PhysicalDevice &device);
 
-	static QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice &device);
+	QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice &device);
 
 	void createLogicalDevice();
+
+	void createSurface();
 
 	void initWindow();
 
