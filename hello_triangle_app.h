@@ -11,6 +11,15 @@
 #include <GLFW/glfw3.h>
 
 #include <string>
+#include <optional>
+
+struct QueueFamilyIndices {
+	std::optional<uint32_t> graphicsFamily;
+
+	[[gnu::always_inline]] inline bool isComplete() {
+		return graphicsFamily.has_value();
+	}
+};
 
 /**
  * @class HelloTriangleApp
@@ -18,11 +27,13 @@
 class HelloTriangleApp {
 private:
 	GLFWwindow *window = nullptr;
-	vk::Instance instance;
-	VkDebugUtilsMessengerEXT callback{ nullptr };
+	vk::UniqueInstance instance;
+	vk::DebugUtilsMessengerEXT callback;
 	vk::PhysicalDevice physicalDevice;
+	vk::UniqueDevice device;
+	vk::Queue graphicsQueue;
 
-	const std::vector<const char *> validationLayers{ "VK_LAYER_KHRONOS_validation" };
+	std::vector<std::string> validationLayers{ "VK_LAYER_KHRONOS_validation" };
 	const std::string windowName = "Hello";
 	static const std::string appName;
 	uint32_t l = 800;
@@ -36,6 +47,8 @@ private:
 
 	void initVulkan();
 
+	static void populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT &createInfoEXT);
+
 	void setupDebugCallback();
 
 	bool checkValidationLayersSupport();
@@ -45,6 +58,12 @@ private:
 	void createInstance();
 
 	void pickPhysicalDevice();
+
+	static bool isDeviceSuitable(const vk::PhysicalDevice &device);
+
+	static QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice &device);
+
+	void createLogicalDevice();
 
 	void initWindow();
 
@@ -63,7 +82,14 @@ public:
 
 	HelloTriangleApp(std::string windowName, uint32_t l, uint32_t h);
 
-	virtual ~HelloTriangleApp();
+	/**
+	 * \brief To add a validation layer before the run method.
+	 * \param validationLayers_
+	 * \todo Need to think how to correctly copy…
+	 */
+	void addValidationLayer(const std::string &validationLayers_);
+
+	virtual ~HelloTriangleApp() = default;
 
 	void run();
 

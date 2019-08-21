@@ -40,7 +40,7 @@ pkg_search_module(GLFW REQUIRED glfw3)
 find_package(Vulkan REQUIRED)
 find_package(glm REQUIRED)
 
-include_directories(${Vulkan_INCLUDE_DIR} ${GLM_INCLUDE_DIRS})
+include_directories(${Vulkan_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
 
 
 add_executable(VulkanTutorial main.cpp hello_triangle_app.cpp hello_triangle_app.h)
