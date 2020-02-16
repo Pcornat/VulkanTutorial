@@ -53,8 +53,8 @@ private:
 	std::vector<std::string> deviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 	const std::string windowName = "Hello";
 	static const std::string appName;
-	uint32_t l = 800;
-	uint32_t h = 600;
+	uint32_t largeur = 800;
+	uint32_t hauteur = 600;
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -85,6 +85,10 @@ private:
 	SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice &device);
 
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
+
+	vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes);
+
+	vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities);
 
 	void createLogicalDevice();
 

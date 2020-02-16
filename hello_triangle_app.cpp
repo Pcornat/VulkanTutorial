@@ -4,6 +4,7 @@
 #include <utility>
 #include <sstream>
 #include <set>
+#include <algorithm>
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -198,10 +199,10 @@ void HelloTriangleApp::initWindow() {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); //Tell glfw to NOT create OpenGL context.
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); //No resizable window because it's a special case so not for now.
 
-	window = glfwCreateWindow(this->l, this->h, this->windowName.c_str(), nullptr, nullptr);
+	window = glfwCreateWindow(this->largeur, this->hauteur, this->windowName.c_str(), nullptr, nullptr);
 }
 
-HelloTriangleApp::HelloTriangleApp(std::string windowName, uint32_t l, uint32_t h) : windowName(std::move(windowName)), l(l), h(h) {}
+HelloTriangleApp::HelloTriangleApp(std::string windowName, uint32_t l, uint32_t h) : windowName(std::move(windowName)), largeur(l), hauteur(h) {}
 
 VKAPI_ATTR vk::Bool32 VKAPI_CALL HelloTriangleApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 																 [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -320,10 +321,11 @@ void HelloTriangleApp::createLogicalDevice() {
 }
 
 void HelloTriangleApp::createSurface() {
-	auto psurf = static_cast<VkSurfaceKHR>(*this->surface);
-	if (glfwCreateWindowSurface(static_cast<VkInstance>(*this->instance), this->window, nullptr, &psurf) != VK_SUCCESS)
+	VkSurfaceKHR psurf = nullptr;
+	if (glfwCreateWindowSurface(*this->instance, this->window, nullptr, &psurf) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create window surface !");
-	this->surface.reset(psurf);
+	}
+	this->surface = vk::UniqueSurfaceKHR(psurf, *this->instance);
 }
 
 SwapChainSupportDetails HelloTriangleApp::querySwapChainSupport(const vk::PhysicalDevice &device) {
