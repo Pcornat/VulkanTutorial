@@ -7,6 +7,8 @@
 
 #endif
 
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 
@@ -22,17 +24,28 @@ struct QueueFamilyIndices {
 	}
 };
 
+struct SwapChainSupportDetails {
+	vk::SurfaceCapabilitiesKHR capabilities;
+	std::vector<vk::SurfaceFormatKHR> formats;
+	std::vector<vk::PresentModeKHR> presentModes;
+};
+
+
 /**
  * @class HelloTriangleApp
  */
 class HelloTriangleApp {
 private:
 	GLFWwindow *window = nullptr;
+	vk::DynamicLoader dl;
 	vk::UniqueInstance instance;
-	vk::DebugUtilsMessengerEXT callback;
-	vk::SurfaceKHR surface;
+//	vk::UniqueHandle<vk::Instance, vk::DispatchLoaderDynamic> instance;
+	vk::UniqueDebugUtilsMessengerEXT callback;
+//	vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> callback;
+	vk::UniqueSurfaceKHR surface;
 	vk::PhysicalDevice physicalDevice;
 	vk::UniqueDevice device;
+//	vk::UniqueHandle<vk::Device, vk::DispatchLoaderDynamic> device;
 	vk::Queue graphicsQueue;
 	vk::Queue presentQueue;
 
@@ -51,7 +64,7 @@ private:
 
 	void initVulkan();
 
-	static void populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT &createInfoEXT);
+	static vk::DebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfo();
 
 	void setupDebugCallback();
 
@@ -65,7 +78,13 @@ private:
 
 	bool isDeviceSuitable(const vk::PhysicalDevice &device);
 
+	bool checkDeviceExtensionSupport(const vk::PhysicalDevice &device);
+
 	QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice &device);
+
+	SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice &device);
+
+	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
 
 	void createLogicalDevice();
 

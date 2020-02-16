@@ -5,9 +5,13 @@
 #include <sstream>
 #include <set>
 
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+
 const std::string HelloTriangleApp::appName{ "Vulkan Tutorial" };
 
 void HelloTriangleApp::run() {
+	auto vkGetInstanceProcAddr = this->dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 	initWindow();
 	initVulkan();
 	mainLoop();
@@ -15,11 +19,11 @@ void HelloTriangleApp::run() {
 }
 
 void HelloTriangleApp::addValidationLayer(const std::string &validationLayers_) {
-	this->validationLayers.push_back(validationLayers_.c_str());
+	this->validationLayers.emplace_back(validationLayers_.c_str());
 }
 
-void HelloTriangleApp::populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT &createInfoEXT) {
-	createInfoEXT = vk::DebugUtilsMessengerCreateInfoEXT();
+vk::DebugUtilsMessengerCreateInfoEXT HelloTriangleApp::populateDebugMessengerCreateInfo() {
+	vk::DebugUtilsMessengerCreateInfoEXT createInfoEXT;
 	createInfoEXT.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
 									| vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
 									| vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose;
@@ -31,6 +35,7 @@ void HelloTriangleApp::populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerC
 	createInfoEXT.setPNext(nullptr);
 	createInfoEXT.setPfnUserCallback(debugCallback);
 	createInfoEXT.setPUserData(nullptr);
+	return createInfoEXT;
 }
 
 void HelloTriangleApp::createInstance() {
@@ -66,8 +71,7 @@ void HelloTriangleApp::createInstance() {
 	for (const auto& extension : extensionsProperties) {
 		std::cout << "\t" << extension.extensionName << std::endl;
 	}*/
-	vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo;
-	populateDebugMessengerCreateInfo(debugCreateInfo);
+	const auto debugCreateInfo = populateDebugMessengerCreateInfo();
 	if (enableValidationLayers) {
 		for (const auto &item : validationLayers) {
 			layers_names.push_back(item.c_str());
@@ -86,7 +90,9 @@ void HelloTriangleApp::createInstance() {
 		createInfo.pNext = nullptr;
 	}
 
-	this->instance = vk::createInstanceUnique(createInfo); //C++ bindings have exceptions enabled by defaults so no need to check the value anymore.
+	this->instance = vk::createInstanceUnique(createInfo);
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(*this->instance);
+	//C++ bindings have exceptions enabled by defaults so no need to check the value anymore.
 }
 
 bool HelloTriangleApp::checkValidationLayersSupport() {
@@ -162,23 +168,9 @@ void HelloTriangleApp::pickPhysicalDevice() {
 
 void HelloTriangleApp::setupDebugCallback() {
 	if (!enableValidationLayers) return;
-
-	vk::DebugUtilsMessengerCreateInfoEXT createInfoEXT{};
-	populateDebugMessengerCreateInfo(createInfoEXT);
-	vk::DispatchLoaderDynamic dldi(*this->instance);
-
-	this->callback = this->instance->createDebugUtilsMessengerEXT(createInfoEXT, nullptr, dldi);
-
-	/* auto CreateDebugUtilsMessengerEXT =
-			reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(this->instance->getProcAddr("vkCreateDebugUtilsMessengerEXT"));
-
-	if (CreateDebugUtilsMessengerEXT != nullptr) {
-		const VkDebugUtilsMessengerCreateInfoEXT tmp(createInfoEXT);
-		if (CreateDebugUtilsMessengerEXT(*instance, &tmp, nullptr, &this->callback) != VkResult::VK_SUCCESS)
-			throw std::runtime_error("failed to set up debug callback!");
-	} else {
-		throw std::runtime_error("Cannot find DebugUtilsMessengerEXT function");
-	} */
+	{
+		this->callback = this->instance->createDebugUtilsMessengerEXTUnique(populateDebugMessengerCreateInfo());
+	}
 }
 
 void HelloTriangleApp::mainLoop() {
@@ -188,12 +180,12 @@ void HelloTriangleApp::mainLoop() {
 }
 
 void HelloTriangleApp::cleanup() {
-	if (enableValidationLayers) {
-		vk::DispatchLoaderDynamic dldi(*this->instance);
-		this->instance->destroyDebugUtilsMessengerEXT(this->callback, nullptr, dldi);
-	}
+//	if (enableValidationLayers) {
+//		const vk::DispatchLoaderDynamic dldi(*this->instance, vkGetInstanceProcAddr);
+//		this->instance->destroyDebugUtilsMessengerEXT(this->callback, nullptr, dldi);
+//	}
 
-	this->instance->destroySurfaceKHR(this->surface);
+//	this->instance->destroySurfaceKHR(this->surface);
 
 	glfwDestroyWindow(this->window);
 
@@ -223,12 +215,32 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL HelloTriangleApp::debugCallback(VkDebugUtilsMes
 }
 
 bool HelloTriangleApp::isDeviceSuitable(const vk::PhysicalDevice &device) {
-	return this->findQueueFamilies(device).isComplete();
+	QueueFamilyIndices indices = findQueueFamilies(device);
+	bool extensionsSupported = checkDeviceExtensionSupport(device);
+	bool swapChainAdequate = false;
+
+	if (extensionsSupported) {
+		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+	}
+
+	return indices.isComplete() && extensionsSupported && swapChainAdequate;
+}
+
+bool HelloTriangleApp::checkDeviceExtensionSupport(const vk::PhysicalDevice &device) {
+	auto availableExtensions = device.enumerateDeviceExtensionProperties();
+	std::set<std::string> requiredExtensions(this->deviceExtensions.cbegin(), this->deviceExtensions.cend());
+
+	for (const auto &extension : availableExtensions) {
+		requiredExtensions.erase(extension.extensionName);
+	}
+
+	return requiredExtensions.empty();
 }
 
 QueueFamilyIndices HelloTriangleApp::findQueueFamilies(const vk::PhysicalDevice &device) {
 	QueueFamilyIndices indices;
-	auto queueFamilies = device.getQueueFamilyProperties();
+	const auto queueFamilies = device.getQueueFamilyProperties();
 
 	int i = 0;
 	for (const auto &queueFamily : queueFamilies) {
@@ -237,7 +249,7 @@ QueueFamilyIndices HelloTriangleApp::findQueueFamilies(const vk::PhysicalDevice 
 		}
 
 		vk::Bool32 presentSupport = false;
-		presentSupport = device.getSurfaceSupportKHR(i, this->surface);
+		presentSupport = device.getSurfaceSupportKHR(i, *this->surface);
 
 		if (queueFamily.queueCount > 0 && presentSupport) {
 			indices.presentFamily = i;
@@ -261,18 +273,24 @@ void HelloTriangleApp::createLogicalDevice() {
 	QueueFamilyIndices indices = findQueueFamilies(this->physicalDevice);
 	std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
-	std::vector<const char *> layer_names;
+	std::vector<const char *> layer_names, extensions;
 	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
 	queueCreateInfos.reserve(uniqueQueueFamilies.size());
 
 	layer_names.reserve(validationLayers.size());
+	extensions.reserve(this->deviceExtensions.size());
 
 	for (decltype(uniqueQueueFamilies)::value_type queueFamily : uniqueQueueFamilies) {
-		vk::DeviceQueueCreateInfo queueCreateInfo;
-		queueCreateInfo.queueFamilyIndex = queueFamily;
-		queueCreateInfo.queueCount = 1;
-		queueCreateInfo.pQueuePriorities = &queuePriority;
-		queueCreateInfos.push_back(queueCreateInfo);
+//		vk::DeviceQueueCreateInfo queueCreateInfo;
+//		queueCreateInfo.queueFamilyIndex = queueFamily;
+//		queueCreateInfo.queueCount = 1;
+//		queueCreateInfo.pQueuePriorities = &queuePriority;
+//		queueCreateInfos.push_back(queueCreateInfo);
+		queueCreateInfos.push_back(vk::DeviceQueueCreateInfo{{}, queueFamily, 1, &queuePriority });
+	}
+
+	for (const auto &extension_name : this->deviceExtensions) {
+		extensions.push_back(extension_name.c_str());
 	}
 
 	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
@@ -280,7 +298,8 @@ void HelloTriangleApp::createLogicalDevice() {
 
 	createInfo.pEnabledFeatures = &deviceFeatures;
 
-	createInfo.enabledExtensionCount = 0;
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(this->deviceExtensions.size());
+	createInfo.ppEnabledExtensionNames = extensions.data();
 
 	if (enableValidationLayers) {
 		for (const auto &layer_name : validationLayers) {
@@ -294,14 +313,32 @@ void HelloTriangleApp::createLogicalDevice() {
 	}
 
 	this->device = this->physicalDevice.createDeviceUnique(createInfo);
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(*this->device);
 
 	this->graphicsQueue = this->device->getQueue(indices.graphicsFamily.value(), 0);
 	this->presentQueue = this->device->getQueue(indices.presentFamily.value(), 0);
 }
 
 void HelloTriangleApp::createSurface() {
-	auto psurf = static_cast<VkSurfaceKHR>(this->surface);
+	auto psurf = static_cast<VkSurfaceKHR>(*this->surface);
 	if (glfwCreateWindowSurface(static_cast<VkInstance>(*this->instance), this->window, nullptr, &psurf) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create window surface !");
-	this->surface = psurf;
+	this->surface.reset(psurf);
+}
+
+SwapChainSupportDetails HelloTriangleApp::querySwapChainSupport(const vk::PhysicalDevice &device) {
+	SwapChainSupportDetails details;
+	device.getSurfaceCapabilitiesKHR(*this->surface, &details.capabilities);
+	details.formats = device.getSurfaceFormatsKHR(*this->surface);
+	details.presentModes = device.getSurfacePresentModesKHR(*this->surface);
+	return details;
+}
+
+vk::SurfaceFormatKHR HelloTriangleApp::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats) {
+	for (const auto &availableFormat : availableFormats) {
+		if (availableFormat.format == vk::Format::eB8G8R8A8Srgb && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+			return availableFormat;
+		}
+	}
+	return availableFormats[0];
 }
