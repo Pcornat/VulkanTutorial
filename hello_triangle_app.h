@@ -36,6 +36,7 @@ struct SwapChainSupportDetails {
  */
 class HelloTriangleApp {
 private:
+	// Members
 	GLFWwindow *window = nullptr;
 	vk::DynamicLoader dl;
 	vk::UniqueInstance instance;
@@ -48,6 +49,9 @@ private:
 //	vk::UniqueHandle<vk::Device, vk::DispatchLoaderDynamic> device;
 	vk::Queue graphicsQueue;
 	vk::Queue presentQueue;
+	vk::UniqueSwapchainKHR swapChain;
+	std::vector<vk::Image> swapChainImages;
+	std::vector<vk::UniqueImageView> swapChainImageViews;
 
 	std::vector<std::string> validationLayers{ "VK_LAYER_KHRONOS_validation" };
 	std::vector<std::string> deviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -62,17 +66,20 @@ private:
 	const bool enableValidationLayers = true;
 #endif
 
+	// Functions
+	void initWindow();
+
 	void initVulkan();
 
-	static vk::DebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfo();
+	void createInstance();
 
-	void setupDebugCallback();
+	static vk::DebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfo();
 
 	bool checkValidationLayersSupport();
 
 	std::vector<const char *> getRequiredExtensions();
 
-	void createInstance();
+	void setupDebugCallback();
 
 	void pickPhysicalDevice();
 
@@ -82,19 +89,21 @@ private:
 
 	QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice &device);
 
-	SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice &device);
-
-	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
-
-	vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes);
-
-	vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities);
-
 	void createLogicalDevice();
 
 	void createSurface();
 
-	void initWindow();
+	void createSwapChain();
+
+	SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice &device);
+
+	static vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
+
+	static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes);
+
+	vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities);
+
+	void createImageViews();
 
 	void mainLoop();
 

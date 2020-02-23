@@ -143,6 +143,8 @@ void HelloTriangleApp::initVulkan() {
 	createSurface();
 	pickPhysicalDevice();
 	createLogicalDevice();
+	createSwapChain();
+	createImageViews();
 }
 
 void HelloTriangleApp::pickPhysicalDevice() {
@@ -343,4 +345,88 @@ vk::SurfaceFormatKHR HelloTriangleApp::chooseSwapSurfaceFormat(const std::vector
 		}
 	}
 	return availableFormats[0];
+}
+
+vk::PresentModeKHR HelloTriangleApp::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes) {
+	for (const auto &mode : availablePresentModes) {
+		if (mode == vk::PresentModeKHR::eMailbox) {
+			return mode;
+		}
+	}
+	return vk::PresentModeKHR::eFifoRelaxed;
+}
+
+vk::Extent2D HelloTriangleApp::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) {
+	if (capabilities.currentExtent.width != std::numeric_limits<std::uint32_t>::max()) {
+		return capabilities.currentExtent;
+	} else {
+		vk::Extent2D actualExtent{ largeur, hauteur };
+		actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
+		actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
+		return actualExtent;
+	}
+}
+
+void HelloTriangleApp::createSwapChain() {
+	const auto swapChainSupport = querySwapChainSupport(this->physicalDevice);
+	const auto surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+	const auto presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+	const auto extent = chooseSwapExtent(swapChainSupport.capabilities);
+
+	std::uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+
+	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+		imageCount = swapChainSupport.capabilities.maxImageCount;
+	}
+	vk::SwapchainCreateInfoKHR createInfo{{},
+										  *this->surface,
+										  imageCount,
+										  surfaceFormat.format,
+										  surfaceFormat.colorSpace,
+										  extent,
+										  1,
+										  vk::ImageUsageFlagBits::eColorAttachment };
+	const auto indices = findQueueFamilies(physicalDevice);
+	const std::uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+
+	if (indices.graphicsFamily != indices.presentFamily) {
+		createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+		createInfo.queueFamilyIndexCount = 2;
+		createInfo.pQueueFamilyIndices = queueFamilyIndices;
+	} else {
+		createInfo.imageSharingMode = vk::SharingMode::eExclusive;
+		createInfo.queueFamilyIndexCount = 0; // Optionnel
+		createInfo.pQueueFamilyIndices = nullptr; // Optionnel
+	}
+	createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+	createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+	createInfo.presentMode = presentMode;
+	createInfo.clipped = true;
+	createInfo.oldSwapchain = nullptr;
+	this->swapChain = this->device->createSwapchainKHRUnique(createInfo);
+	this->swapChainImages = this->device->getSwapchainImagesKHR(*this->swapChain);
+}
+
+void HelloTriangleApp::createImageViews() {
+	swapChainImageViews.resize(swapChainImages.size());
+	{
+		const auto swapChainSupport = querySwapChainSupport(this->physicalDevice);
+		const auto format = chooseSwapSurfaceFormat(swapChainSupport.formats).format;
+		for (size_t i = 0; i < swapChainImages.size(); ++i) {
+			swapChainImageViews[i] =
+					this->device->createImageViewUnique(vk::ImageViewCreateInfo{{},
+																				swapChainImages[i],
+																				vk::ImageViewType::e2D,
+																				format,
+																				vk::ComponentMapping{},
+																				vk::ImageSubresourceRange{
+																						vk::ImageAspectFlagBits::eColor,
+																						0,
+																						1,
+																						0,
+																						1
+																				}
+					});
+		}
+	}
 }
