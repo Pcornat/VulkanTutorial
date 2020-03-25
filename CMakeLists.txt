@@ -42,6 +42,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 		m)
 endif ()
 
+find_package(OpenMP REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(GLFW REQUIRED glfw3)
 
@@ -54,4 +55,4 @@ include_directories(${Vulkan_INCLUDE_DIRS} #[[${GLM_INCLUDE_DIRS}]])
 add_executable(VulkanTutorial main.cpp hello_triangle_app.cpp hello_triangle_app.h)
 target_compile_options(VulkanTutorial PRIVATE ${COMPILE_FLAGS})
 target_link_options(VulkanTutorial PRIVATE ${LINKER_OPTIONS})
-target_link_libraries(VulkanTutorial ${LINKER_FLAGS} ${CMAKE_DL_LIBS} ${GLFW_LIBRARIES} Vulkan::Vulkan)
+target_link_libraries(VulkanTutorial ${LINKER_FLAGS} ${CMAKE_DL_LIBS} ${GLFW_LIBRARIES} Vulkan::Vulkan OpenMP::OpenMP_CXX)
