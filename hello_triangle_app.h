@@ -14,6 +14,7 @@
 
 #include <string>
 #include <optional>
+#include <any>
 
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicsFamily;
@@ -52,9 +53,13 @@ private:
 	vk::UniqueSwapchainKHR swapChain;
 	std::vector<vk::Image> swapChainImages;
 	std::vector<vk::UniqueImageView> swapChainImageViews;
+	vk::UniquePipelineLayout pipelineLayout;
 
 	std::vector<std::string> validationLayers{ "VK_LAYER_KHRONOS_validation" };
 	std::vector<std::string> deviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
+	std::vector<std::any> tmpVal;
+
 	const std::string windowName = "Hello";
 	static const std::string appName;
 	uint32_t largeur = 800;
@@ -104,6 +109,10 @@ private:
 	vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities);
 
 	void createImageViews();
+
+	void createGraphicsPipeline();
+
+	vk::UniqueShaderModule createShaderModule(const std::vector<char> &code);
 
 	void mainLoop();
 

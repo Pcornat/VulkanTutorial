@@ -3,6 +3,7 @@
 #include <cstring>
 #include <utility>
 #include <sstream>
+#include <fstream>
 #include <set>
 #include <algorithm>
 
@@ -145,6 +146,7 @@ void HelloTriangleApp::initVulkan() {
 	createLogicalDevice();
 	createSwapChain();
 	createImageViews();
+	createGraphicsPipeline();
 }
 
 void HelloTriangleApp::pickPhysicalDevice() {
@@ -374,6 +376,7 @@ void HelloTriangleApp::createSwapChain() {
 	const auto extent = chooseSwapExtent(swapChainSupport.capabilities);
 
 	std::uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+	this->tmpVal.emplace_back(extent);
 
 	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
 		imageCount = swapChainSupport.capabilities.maxImageCount;
@@ -429,4 +432,93 @@ void HelloTriangleApp::createImageViews() {
 					});
 		}
 	}
+}
+
+static std::vector<char> readFile(const std::string &filename) {
+	std::ifstream file;
+	file.exceptions(file.exceptions() | std::ifstream::failbit | std::ifstream::badbit);
+	file.open(filename, std::ios::ate | std::ios::binary);
+	std::size_t fileSize = file.tellg();
+	std::vector<char> buffer(fileSize);
+
+	file.seekg(0);
+	file.read(buffer.data(), fileSize);
+	return buffer;
+}
+
+void HelloTriangleApp::createGraphicsPipeline() {
+	const auto vertShaderCode = readFile("shaders/vert.spv");
+	const auto fragShaderCode = readFile("shaders/frag.spv");
+
+	const auto vertShaderModule = createShaderModule(vertShaderCode);
+	const auto fragShaderModule = createShaderModule(fragShaderCode);
+
+	const vk::PipelineShaderStageCreateInfo shaderStages[] = {
+			vk::PipelineShaderStageCreateInfo{
+					{},
+					vk::ShaderStageFlagBits::eVertex,
+					*vertShaderModule,
+					"main" },
+			vk::PipelineShaderStageCreateInfo{
+					{},
+					vk::ShaderStageFlagBits::eFragment,
+					*fragShaderModule,
+					"main" }
+	};
+	const vk::PipelineVertexInputStateCreateInfo vertexInputInfo{{}, 0, nullptr, 0, nullptr };
+	const vk::PipelineInputAssemblyStateCreateInfo inputAssembly{{}, vk::PrimitiveTopology::eTriangleList, false };
+	const vk::Viewport viewport{
+			0.0f,
+			0.0f,
+			static_cast<float>(std::any_cast<vk::Extent2D>(tmpVal[0]).width),
+			static_cast<float>(std::any_cast<vk::Extent2D>(tmpVal[0]).height),
+			0.0f,
+			0.1f };
+	const vk::Rect2D scissor{{ 0, 0 }, std::any_cast<vk::Extent2D>(tmpVal[0]) };
+	tmpVal.clear();
+	const vk::PipelineViewportStateCreateInfo viewportState{{},
+															1,
+															&viewport,
+															1,
+															&scissor };
+	const vk::PipelineRasterizationStateCreateInfo rasterizer{{},
+															  false,
+															  false,
+															  vk::PolygonMode::eFill,
+															  vk::CullModeFlagBits::eBack,
+															  vk::FrontFace::eClockwise,
+															  false,
+															  0.0f,
+															  0.0f,
+															  0.0f,
+															  1.0f };
+	const vk::PipelineMultisampleStateCreateInfo multisampling{{},
+															   vk::SampleCountFlagBits::e1,
+															   false,
+															   1.0f,
+															   nullptr,
+															   false,
+															   false };
+	const vk::PipelineColorBlendAttachmentState colorBlendAttachment{
+			false,
+			vk::BlendFactor::eOne,
+			vk::BlendFactor::eZero,
+			vk::BlendOp::eAdd,
+			vk::BlendFactor::eOne,
+			vk::BlendFactor::eZero,
+			vk::BlendOp::eAdd,
+			vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA };
+	const vk::PipelineColorBlendStateCreateInfo colorBlending{{}, false, vk::LogicOp::eCopy, 1, &colorBlendAttachment, { 0.0f, 0.0f, 0.0f, 0.0f }};
+	const vk::DynamicState dynamicStates[] = { vk::DynamicState::eViewport, vk::DynamicState::eLineWidth };
+	const vk::PipelineDynamicStateCreateInfo dynamicState{{}, 2, dynamicStates };
+	const vk::PipelineLayoutCreateInfo pipelineLayoutInfo{{}, 0, nullptr, 0, nullptr };
+	this->pipelineLayout = this->device->createPipelineLayoutUnique(pipelineLayoutInfo);
+}
+
+vk::UniqueShaderModule HelloTriangleApp::createShaderModule(const std::vector<char> &code) {
+	return this->device->createShaderModuleUnique(vk::ShaderModuleCreateInfo{
+			{},
+			code.size(),
+			reinterpret_cast<const std::uint32_t *>(code.data())
+	});
 }
