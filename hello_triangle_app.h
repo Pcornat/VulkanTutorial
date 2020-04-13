@@ -53,6 +53,7 @@ private:
 	vk::UniqueSwapchainKHR swapChain;
 	std::vector<vk::Image> swapChainImages;
 	std::vector<vk::UniqueImageView> swapChainImageViews;
+	vk::UniqueRenderPass renderPass;
 	vk::UniquePipelineLayout pipelineLayout;
 
 	std::vector<std::string> validationLayers{ "VK_LAYER_KHRONOS_validation" };
@@ -113,6 +114,8 @@ private:
 	void createGraphicsPipeline();
 
 	vk::UniqueShaderModule createShaderModule(const std::vector<char> &code);
+
+	void createRenderPass();
 
 	void mainLoop();
 

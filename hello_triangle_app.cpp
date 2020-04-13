@@ -147,6 +147,7 @@ void HelloTriangleApp::initVulkan() {
 	createSwapChain();
 	createImageViews();
 	createGraphicsPipeline();
+	createRenderPass();
 }
 
 void HelloTriangleApp::pickPhysicalDevice() {
@@ -237,7 +238,7 @@ bool HelloTriangleApp::checkDeviceExtensionSupport(const vk::PhysicalDevice &dev
 	std::set<std::string> requiredExtensions(this->deviceExtensions.cbegin(), this->deviceExtensions.cend());
 
 	for (const auto &extension : availableExtensions) {
-		requiredExtensions.erase(extension.extensionName);
+		requiredExtensions.erase(std::string(extension.extensionName));
 	}
 
 	return requiredExtensions.empty();
@@ -377,6 +378,7 @@ void HelloTriangleApp::createSwapChain() {
 
 	std::uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 	this->tmpVal.emplace_back(extent);
+	this->tmpVal.emplace_back(surfaceFormat);
 
 	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
 		imageCount = swapChainSupport.capabilities.maxImageCount;
@@ -475,7 +477,7 @@ void HelloTriangleApp::createGraphicsPipeline() {
 			0.0f,
 			0.1f };
 	const vk::Rect2D scissor{{ 0, 0 }, std::any_cast<vk::Extent2D>(tmpVal[0]) };
-	tmpVal.clear();
+
 	const vk::PipelineViewportStateCreateInfo viewportState{{},
 															1,
 															&viewport,
@@ -521,4 +523,20 @@ vk::UniqueShaderModule HelloTriangleApp::createShaderModule(const std::vector<ch
 			code.size(),
 			reinterpret_cast<const std::uint32_t *>(code.data())
 	});
+}
+
+void HelloTriangleApp::createRenderPass() {
+	const vk::AttachmentDescription colorAttachment{{},
+													std::any_cast<vk::Format>(tmpVal[1]),
+													vk::SampleCountFlagBits::e1,
+													vk::AttachmentLoadOp::eClear,
+													vk::AttachmentStoreOp::eStore,
+													vk::AttachmentLoadOp::eDontCare,
+													vk::AttachmentStoreOp::eDontCare,
+													vk::ImageLayout::eUndefined,
+													vk::ImageLayout::ePresentSrcKHR };
+	const vk::AttachmentReference colorAttachmentRef{ 0, vk::ImageLayout::eColorAttachmentOptimal };
+	const vk::SubpassDescription subpass{{}, vk::PipelineBindPoint::eGraphics, {}, {}, 1, &colorAttachmentRef };
+	const vk::RenderPassCreateInfo renderPassInfo{{}, 1, &colorAttachment, 1, &subpass };
+	this->renderPass = this->device->createRenderPassUnique(renderPassInfo);
 }
