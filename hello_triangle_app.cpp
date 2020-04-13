@@ -378,7 +378,7 @@ void HelloTriangleApp::createSwapChain() {
 
 	std::uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 	this->tmpVal.emplace_back(extent);
-	this->tmpVal.emplace_back(surfaceFormat);
+	this->tmpVal.emplace_back(surfaceFormat.format);
 
 	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
 		imageCount = swapChainSupport.capabilities.maxImageCount;
