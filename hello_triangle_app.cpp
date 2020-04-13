@@ -515,6 +515,12 @@ void HelloTriangleApp::createGraphicsPipeline() {
 	const vk::PipelineDynamicStateCreateInfo dynamicState{{}, 2, dynamicStates };
 	const vk::PipelineLayoutCreateInfo pipelineLayoutInfo{{}, 0, nullptr, 0, nullptr };
 	this->pipelineLayout = this->device->createPipelineLayoutUnique(pipelineLayoutInfo);
+
+	const vk::GraphicsPipelineCreateInfo pipelineInfo{
+			{}, 2, shaderStages, &vertexInputInfo, &inputAssembly, nullptr, &viewportState, &rasterizer, &multisampling,
+			nullptr, &colorBlending,
+			nullptr, *pipelineLayout, *renderPass, 0 };
+	this->pipeline = this->device->createGraphicsPipelineUnique({ nullptr }, pipelineInfo);
 }
 
 vk::UniqueShaderModule HelloTriangleApp::createShaderModule(const std::vector<char> &code) {

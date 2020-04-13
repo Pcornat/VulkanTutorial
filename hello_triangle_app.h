@@ -55,6 +55,7 @@ private:
 	std::vector<vk::UniqueImageView> swapChainImageViews;
 	vk::UniqueRenderPass renderPass;
 	vk::UniquePipelineLayout pipelineLayout;
+	vk::UniquePipeline pipeline;
 
 	std::vector<std::string> validationLayers{ "VK_LAYER_KHRONOS_validation" };
 	std::vector<std::string> deviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
