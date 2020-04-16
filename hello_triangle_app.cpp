@@ -151,6 +151,7 @@ void HelloTriangleApp::initVulkan() {
 	createFramebuffers();
 	createCommandPool();
 	createCommandBuffers();
+	createSemaphores();
 }
 
 void HelloTriangleApp::pickPhysicalDevice() {
@@ -185,7 +186,28 @@ void HelloTriangleApp::setupDebugCallback() {
 void HelloTriangleApp::mainLoop() {
 	while (!glfwWindowShouldClose(this->window)) {
 		glfwPollEvents();
+		drawFrame();
 	}
+}
+
+void HelloTriangleApp::drawFrame() {
+//	const vk::Fence fence{ nullptr };
+	const std::uint32_t imageIndex = this->device->acquireNextImageKHR(*swapChain,
+																	   std::numeric_limits<std::uint32_t>::max(),
+																	   *imageAvailableSemaphore,
+																	   vk::Fence{});
+	{
+		const vk::Flags<vk::PipelineStageFlagBits> waitStages{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
+		const vk::SubmitInfo submitInfo{
+				1,
+				&imageAvailableSemaphore.get(),
+				&waitStages, 1, &commandBuffers[imageIndex].get(), 1, &renderFinishedSemaphore.get() };
+		graphicsQueue.submit(submitInfo, {});
+	}
+
+	const vk::PresentInfoKHR presentInfo{ 1, &renderFinishedSemaphore.get(), 1, &swapChain.get(), &imageIndex };
+	presentQueue.presentKHR(presentInfo);
+	this->device->waitIdle();
 }
 
 void HelloTriangleApp::cleanup() {
@@ -544,9 +566,17 @@ void HelloTriangleApp::createRenderPass() {
 													vk::AttachmentStoreOp::eDontCare,
 													vk::ImageLayout::eUndefined,
 													vk::ImageLayout::ePresentSrcKHR };
-	const vk::AttachmentReference colorAttachmentRef{ 0, vk::ImageLayout::eColorAttachmentOptimal };
+	constexpr vk::AttachmentReference colorAttachmentRef{ 0, vk::ImageLayout::eColorAttachmentOptimal };
 	const vk::SubpassDescription subpass{{}, vk::PipelineBindPoint::eGraphics, {}, {}, 1, &colorAttachmentRef };
-	const vk::RenderPassCreateInfo renderPassInfo{{}, 1, &colorAttachment, 1, &subpass };
+	constexpr vk::SubpassDependency dependency{
+			VK_SUBPASS_EXTERNAL,
+			0,
+			{ vk::PipelineStageFlagBits::eColorAttachmentOutput },
+			{ vk::PipelineStageFlagBits::eColorAttachmentOutput },
+			{ vk::AccessFlagBits::eMemoryRead },
+			{ vk::AccessFlagBits::eColorAttachmentWrite }
+	};
+	const vk::RenderPassCreateInfo renderPassInfo{{}, 1, &colorAttachment, 1, &subpass, 1, &dependency };
 	this->renderPass = this->device->createRenderPassUnique(renderPassInfo);
 }
 
@@ -588,5 +618,11 @@ void HelloTriangleApp::createCommandBuffers() {
 		commandBuffers[i]->bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline);
 		commandBuffers[i]->draw(3, 1, 0, 0);
 		commandBuffers[i]->endRenderPass();
+		commandBuffers[i]->end();
 	}
+}
+
+void HelloTriangleApp::createSemaphores() {
+	this->imageAvailableSemaphore = this->device->createSemaphoreUnique({});
+	this->renderFinishedSemaphore = this->device->createSemaphoreUnique({});
 }

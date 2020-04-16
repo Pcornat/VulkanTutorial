@@ -59,6 +59,8 @@ private:
 	std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
 	vk::UniqueCommandPool commandPool;
 	std::vector<vk::UniqueCommandBuffer> commandBuffers;
+	vk::UniqueSemaphore imageAvailableSemaphore;
+	vk::UniqueSemaphore renderFinishedSemaphore;
 
 	std::vector<std::string> validationLayers{ "VK_LAYER_KHRONOS_validation" };
 	std::vector<std::string> deviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -127,7 +129,11 @@ private:
 
 	void createCommandBuffers();
 
+	void createSemaphores();
+
 	void mainLoop();
+
+	void drawFrame();
 
 	void cleanup();
 
