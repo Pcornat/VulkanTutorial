@@ -151,7 +151,7 @@ void HelloTriangleApp::initVulkan() {
 	createFramebuffers();
 	createCommandPool();
 	createCommandBuffers();
-	createSemaphores();
+	createSyncObjects();
 }
 
 void HelloTriangleApp::pickPhysicalDevice() {
@@ -191,23 +191,38 @@ void HelloTriangleApp::mainLoop() {
 }
 
 void HelloTriangleApp::drawFrame() {
-//	const vk::Fence fence{ nullptr };
+	this->device->waitForFences(*inFlightFences[currentFrame], true, std::numeric_limits<std::uint32_t>::max());
+	this->device->resetFences(*inFlightFences[currentFrame]);
 	const std::uint32_t imageIndex = this->device->acquireNextImageKHR(*swapChain,
 																	   std::numeric_limits<std::uint32_t>::max(),
-																	   *imageAvailableSemaphore,
+																	   *imageAvailableSemaphores[currentFrame],
 																	   vk::Fence{});
+	if (imagesInFlight[imageIndex]) {
+		device->waitForFences(imagesInFlight[imageIndex], true, std::numeric_limits<std::uint32_t>::max());
+	}
+	imagesInFlight[imageIndex] = *inFlightFences[currentFrame];
+
 	{
 		const vk::Flags<vk::PipelineStageFlagBits> waitStages{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
 		const vk::SubmitInfo submitInfo{
 				1,
-				&imageAvailableSemaphore.get(),
-				&waitStages, 1, &commandBuffers[imageIndex].get(), 1, &renderFinishedSemaphore.get() };
-		graphicsQueue.submit(submitInfo, {});
+				&imageAvailableSemaphores[currentFrame].get(),
+				&waitStages,
+				1,
+				&commandBuffers[imageIndex].get(),
+				1,
+				&renderFinishedSemaphores[currentFrame].get() };
+
+		device->resetFences(*inFlightFences[currentFrame]);
+
+		graphicsQueue.submit(submitInfo, *inFlightFences[currentFrame]);
 	}
 
-	const vk::PresentInfoKHR presentInfo{ 1, &renderFinishedSemaphore.get(), 1, &swapChain.get(), &imageIndex };
-	presentQueue.presentKHR(presentInfo);
-	this->device->waitIdle();
+	{
+		const vk::PresentInfoKHR presentInfo{ 1, &renderFinishedSemaphores[currentFrame].get(), 1, &swapChain.get(), &imageIndex };
+		presentQueue.presentKHR(presentInfo);
+	}
+	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void HelloTriangleApp::cleanup() {
@@ -217,7 +232,7 @@ void HelloTriangleApp::cleanup() {
 //	}
 
 //	this->instance->destroySurfaceKHR(this->surface);
-
+	device->waitIdle();
 	glfwDestroyWindow(this->window);
 
 	glfwTerminate();
@@ -622,7 +637,12 @@ void HelloTriangleApp::createCommandBuffers() {
 	}
 }
 
-void HelloTriangleApp::createSemaphores() {
-	this->imageAvailableSemaphore = this->device->createSemaphoreUnique({});
-	this->renderFinishedSemaphore = this->device->createSemaphoreUnique({});
+void HelloTriangleApp::createSyncObjects() {
+	constexpr vk::FenceCreateInfo fenceInfo{{ vk::FenceCreateFlagBits::eSignaled }};
+	imagesInFlight.resize(swapChainImages.size());
+	for (std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+		this->imageAvailableSemaphores[i] = this->device->createSemaphoreUnique({});
+		this->renderFinishedSemaphores[i] = this->device->createSemaphoreUnique({});
+		this->inFlightFences[i] = this->device->createFenceUnique(fenceInfo);
+	}
 }

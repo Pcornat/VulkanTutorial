@@ -37,17 +37,15 @@ struct SwapChainSupportDetails {
  */
 class HelloTriangleApp {
 private:
+	static constexpr std::size_t MAX_FRAMES_IN_FLIGHT = 2;
 	// Members
 	GLFWwindow *window = nullptr;
 	vk::DynamicLoader dl;
 	vk::UniqueInstance instance;
-//	vk::UniqueHandle<vk::Instance, vk::DispatchLoaderDynamic> instance;
 	vk::UniqueDebugUtilsMessengerEXT callback;
-//	vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> callback;
 	vk::UniqueSurfaceKHR surface;
 	vk::PhysicalDevice physicalDevice;
 	vk::UniqueDevice device;
-//	vk::UniqueHandle<vk::Device, vk::DispatchLoaderDynamic> device;
 	vk::Queue graphicsQueue;
 	vk::Queue presentQueue;
 	vk::UniqueSwapchainKHR swapChain;
@@ -59,8 +57,11 @@ private:
 	std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
 	vk::UniqueCommandPool commandPool;
 	std::vector<vk::UniqueCommandBuffer> commandBuffers;
-	vk::UniqueSemaphore imageAvailableSemaphore;
-	vk::UniqueSemaphore renderFinishedSemaphore;
+	std::array<vk::UniqueSemaphore, MAX_FRAMES_IN_FLIGHT> imageAvailableSemaphores;
+	std::array<vk::UniqueSemaphore, MAX_FRAMES_IN_FLIGHT> renderFinishedSemaphores;
+	std::array<vk::UniqueFence, MAX_FRAMES_IN_FLIGHT> inFlightFences;
+	std::vector<vk::Fence> imagesInFlight;
+	std::size_t currentFrame = 0;
 
 	std::vector<std::string> validationLayers{ "VK_LAYER_KHRONOS_validation" };
 	std::vector<std::string> deviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -129,7 +130,7 @@ private:
 
 	void createCommandBuffers();
 
-	void createSemaphores();
+	void createSyncObjects();
 
 	void mainLoop();
 
