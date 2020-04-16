@@ -56,6 +56,9 @@ private:
 	vk::UniqueRenderPass renderPass;
 	vk::UniquePipelineLayout pipelineLayout;
 	vk::UniquePipeline pipeline;
+	std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
+	vk::UniqueCommandPool commandPool;
+	std::vector<vk::UniqueCommandBuffer> commandBuffers;
 
 	std::vector<std::string> validationLayers{ "VK_LAYER_KHRONOS_validation" };
 	std::vector<std::string> deviceExtensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -117,6 +120,12 @@ private:
 	vk::UniqueShaderModule createShaderModule(const std::vector<char> &code);
 
 	void createRenderPass();
+
+	void createFramebuffers();
+
+	void createCommandPool();
+
+	void createCommandBuffers();
 
 	void mainLoop();
 

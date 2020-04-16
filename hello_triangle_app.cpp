@@ -146,8 +146,11 @@ void HelloTriangleApp::initVulkan() {
 	createLogicalDevice();
 	createSwapChain();
 	createImageViews();
-	createGraphicsPipeline();
 	createRenderPass();
+	createGraphicsPipeline();
+	createFramebuffers();
+	createCommandPool();
+	createCommandBuffers();
 }
 
 void HelloTriangleApp::pickPhysicalDevice() {
@@ -520,7 +523,7 @@ void HelloTriangleApp::createGraphicsPipeline() {
 			{}, 2, shaderStages, &vertexInputInfo, &inputAssembly, nullptr, &viewportState, &rasterizer, &multisampling,
 			nullptr, &colorBlending,
 			nullptr, *pipelineLayout, *renderPass, 0 };
-	this->pipeline = this->device->createGraphicsPipelineUnique({ nullptr }, pipelineInfo);
+	this->pipeline = this->device->createGraphicsPipelineUnique({}, pipelineInfo);
 }
 
 vk::UniqueShaderModule HelloTriangleApp::createShaderModule(const std::vector<char> &code) {
@@ -545,4 +548,45 @@ void HelloTriangleApp::createRenderPass() {
 	const vk::SubpassDescription subpass{{}, vk::PipelineBindPoint::eGraphics, {}, {}, 1, &colorAttachmentRef };
 	const vk::RenderPassCreateInfo renderPassInfo{{}, 1, &colorAttachment, 1, &subpass };
 	this->renderPass = this->device->createRenderPassUnique(renderPassInfo);
+}
+
+void HelloTriangleApp::createFramebuffers() {
+	swapChainFramebuffers.resize(swapChainImageViews.size());
+	const auto extent = std::any_cast<vk::Extent2D>(tmpVal[0]);
+	for (size_t i = 0; i < swapChainImageViews.size(); ++i) {
+		const vk::FramebufferCreateInfo framebufferInfo{{}, *renderPass, 1, &swapChainImageViews[i].get(), extent.width, extent.height, 1 };
+		swapChainFramebuffers[i] = this->device->createFramebufferUnique(framebufferInfo);
+	}
+}
+
+void HelloTriangleApp::createCommandPool() {
+	const auto queueFamilyIndices = findQueueFamilies(this->physicalDevice);
+	const vk::CommandPoolCreateInfo poolInfo{{}, queueFamilyIndices.graphicsFamily.value() };
+	this->commandPool = this->device->createCommandPoolUnique(poolInfo);
+}
+
+void HelloTriangleApp::createCommandBuffers() {
+	commandBuffers.resize(swapChainFramebuffers.size());
+	const vk::CommandBufferAllocateInfo allocateInfo{
+			*commandPool,
+			vk::CommandBufferLevel::ePrimary,
+			static_cast<uint32_t>(commandBuffers.size()) };
+	this->commandBuffers = this->device->allocateCommandBuffersUnique(allocateInfo);
+	for (size_t i = 0; i < commandBuffers.size(); ++i) {
+		{
+			const vk::CommandBufferBeginInfo beginInfo;
+			commandBuffers[i]->begin(beginInfo);
+		}
+		{
+			const vk::ClearValue clearColor{ std::array{ 0.f, 0.f, 0.f, 1.f }};
+			const vk::RenderPassBeginInfo renderPassInfo{
+					*renderPass, *swapChainFramebuffers[i],
+					{{ 0, 0 }, std::any_cast<vk::Extent2D>(tmpVal[0]) },
+					1, &clearColor };
+			commandBuffers[i]->beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+		}
+		commandBuffers[i]->bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline);
+		commandBuffers[i]->draw(3, 1, 0, 0);
+		commandBuffers[i]->endRenderPass();
+	}
 }
