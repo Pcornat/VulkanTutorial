@@ -9,7 +9,7 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-const std::string HelloTriangleApp::appName{ "Vulkan Tutorial" };
+const char *const HelloTriangleApp::appName{ "Vulkan Tutorial" };
 
 void HelloTriangleApp::run() {
 	auto vkGetInstanceProcAddr = this->dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
@@ -20,49 +20,41 @@ void HelloTriangleApp::run() {
 	cleanup();
 }
 
-void HelloTriangleApp::addValidationLayer(const std::string &validationLayers_) {
+[[maybe_unused]] void HelloTriangleApp::addValidationLayer(const std::string &validationLayers_) {
 	this->validationLayers.emplace_back(validationLayers_.c_str());
 }
 
 vk::DebugUtilsMessengerCreateInfoEXT HelloTriangleApp::populateDebugMessengerCreateInfo() {
-	vk::DebugUtilsMessengerCreateInfoEXT createInfoEXT;
-	createInfoEXT.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-									| vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
-									| vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose;
-
-	createInfoEXT.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
-								| vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance
-								| vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral;
-
-	createInfoEXT.setPNext(nullptr);
-	createInfoEXT.setPfnUserCallback(debugCallback);
-	createInfoEXT.setPUserData(nullptr);
-	return createInfoEXT;
+	return vk::DebugUtilsMessengerCreateInfoEXT{{},
+												vk::DebugUtilsMessageSeverityFlagsEXT{
+														vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+														| vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
+														| vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose },
+												vk::DebugUtilsMessageTypeFlagsEXT{
+														vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+														| vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance
+														| vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral },
+												debugCallback,
+												nullptr };
 }
 
 void HelloTriangleApp::createInstance() {
 	if (enableValidationLayers && !checkValidationLayersSupport()) {
 		throw std::runtime_error("validation layers requested, but not available!");
 	}
-	vk::ApplicationInfo appInfo;
-	vk::InstanceCreateInfo createInfo{};
+	const vk::ApplicationInfo appInfo{
+			HelloTriangleApp::appName,
+			VK_MAKE_VERSION(1, 0, 0),
+			"No Engine",
+			VK_MAKE_VERSION(1, 0, 0),
+			VK_API_VERSION_1_2
+	};
+	vk::InstanceCreateInfo createInfo{{}, &appInfo };
 	std::vector<const char *> extensions, layers_names; // Needed because it can cause problem if it is declared inside the condition.
 	layers_names.reserve(validationLayers.size());
 
-	appInfo.setPNext(nullptr);
-	appInfo.pApplicationName = HelloTriangleApp::appName.c_str();
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.pEngineName = "No Engine";
-	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
-
-	createInfo.pApplicationInfo = &appInfo;
-	createInfo.pNext = nullptr;
-
-
 	uint32_t glfwExtensionCount = 0;
-	const char **glfwExtensions = nullptr;
-	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	const char **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
 	createInfo.enabledExtensionCount = glfwExtensionCount;
 	createInfo.ppEnabledExtensionNames = glfwExtensions;
@@ -74,7 +66,7 @@ void HelloTriangleApp::createInstance() {
 		std::cout << "\t" << extension.extensionName << std::endl;
 	}*/
 	const auto debugCreateInfo = populateDebugMessengerCreateInfo();
-	if (enableValidationLayers) {
+	if constexpr (enableValidationLayers) {
 		for (const auto &item : validationLayers) {
 			layers_names.push_back(item.c_str());
 		}
@@ -98,20 +90,13 @@ void HelloTriangleApp::createInstance() {
 }
 
 bool HelloTriangleApp::checkValidationLayersSupport() {
-	//uint32_t layerCount;
-	auto availableLayers = vk::enumerateInstanceLayerProperties();
-
-	/*vk::enumerateInstanceLayerProperties(&layerCount, nullptr);
-
-	std::vector<vk::LayerProperties> availableLayers(layerCount);
-	vk::enumerateInstanceLayerProperties(&layerCount, availableLayers.data());*/
+	const auto availableLayers = vk::enumerateInstanceLayerProperties();
 
 	for (const auto &layerName : validationLayers) {
 		bool layerFound = false;
 
 		for (const auto &layerProperties : availableLayers) {
-			if (/* strcmp(layerName, layerProperties.layerName) == 0 */ layerName == layerProperties.layerName) {
-				//LayerName is a char[256] useless to use std::string, it would add more compute time.
+			if (layerName == layerProperties.layerName) {
 				layerFound = true;
 				break;
 			}
@@ -193,17 +178,25 @@ void HelloTriangleApp::mainLoop() {
 void HelloTriangleApp::drawFrame() {
 	this->device->waitForFences(*inFlightFences[currentFrame], true, std::numeric_limits<std::uint32_t>::max());
 	this->device->resetFences(*inFlightFences[currentFrame]);
-	const std::uint32_t imageIndex = this->device->acquireNextImageKHR(*swapChain,
-																	   std::numeric_limits<std::uint32_t>::max(),
-																	   *imageAvailableSemaphores[currentFrame],
-																	   vk::Fence{});
+	const auto result = this->device->acquireNextImageKHR(*swapChain,
+														  std::numeric_limits<std::uint32_t>::max(),
+														  *imageAvailableSemaphores[currentFrame],
+														  vk::Fence{});
+	if (result.result == vk::Result::eErrorOutOfDateKHR) {
+		recreateSwapChain();
+		return;
+	} else if (result.result != vk::Result::eSuccess && result.result != vk::Result::eSuboptimalKHR) {
+		throw std::runtime_error("échec de la présentation d'une image à la swap chain!");
+	}
+
+	const std::uint32_t imageIndex = result.value;
 	if (imagesInFlight[imageIndex]) {
 		device->waitForFences(imagesInFlight[imageIndex], true, std::numeric_limits<std::uint32_t>::max());
 	}
 	imagesInFlight[imageIndex] = *inFlightFences[currentFrame];
 
 	{
-		const vk::Flags<vk::PipelineStageFlagBits> waitStages{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
+		const vk::PipelineStageFlags waitStages{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
 		const vk::SubmitInfo submitInfo{
 				1,
 				&imageAvailableSemaphores[currentFrame].get(),
@@ -218,20 +211,27 @@ void HelloTriangleApp::drawFrame() {
 		graphicsQueue.submit(submitInfo, *inFlightFences[currentFrame]);
 	}
 
-	{
+	try {
 		const vk::PresentInfoKHR presentInfo{ 1, &renderFinishedSemaphores[currentFrame].get(), 1, &swapChain.get(), &imageIndex };
-		presentQueue.presentKHR(presentInfo);
+		const auto resultQueue = presentQueue.presentKHR(presentInfo);
+		if (resultQueue == vk::Result::eSuboptimalKHR || framebufferResized) {
+			framebufferResized = false;
+			recreateSwapChain();
+		} else if (resultQueue != vk::Result::eSuccess) {
+			throw std::runtime_error("échec de la présentation d'une image!");
+		}
+	} catch (const vk::OutOfDateKHRError &error) {
+		framebufferResized = false;
+		recreateSwapChain();
+	} catch (const std::exception &exception) {
+		std::cerr << "exception not handled\n";
+		__throw_exception_again;
 	}
+
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void HelloTriangleApp::cleanup() {
-//	if (enableValidationLayers) {
-//		const vk::DispatchLoaderDynamic dldi(*this->instance, vkGetInstanceProcAddr);
-//		this->instance->destroyDebugUtilsMessengerEXT(this->callback, nullptr, dldi);
-//	}
-
-//	this->instance->destroySurfaceKHR(this->surface);
 	device->waitIdle();
 	glfwDestroyWindow(this->window);
 
@@ -242,12 +242,18 @@ void HelloTriangleApp::initWindow() {
 	glfwInit();
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); //Tell glfw to NOT create OpenGL context.
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); //No resizable window because it's a special case so not for now.
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 	window = glfwCreateWindow(this->largeur, this->hauteur, this->windowName.c_str(), nullptr, nullptr);
+	glfwSetWindowUserPointer(window, this);
+	glfwSetFramebufferSizeCallback(window, [](GLFWwindow *wwindow, [[maybe_unused]] int width, [[maybe_unused]] int height) {
+		auto *__restrict app = reinterpret_cast<HelloTriangleApp *>(glfwGetWindowUserPointer(wwindow));
+		app->framebufferResized = true;
+	});
 }
 
-HelloTriangleApp::HelloTriangleApp(std::string windowName, uint32_t l, uint32_t h) : windowName(std::move(windowName)), largeur(l), hauteur(h) {}
+HelloTriangleApp::HelloTriangleApp(std::string windowName, const uint32_t l, const uint32_t h) :
+		windowName(std::move(windowName)), largeur(l), hauteur(h) {}
 
 VKAPI_ATTR vk::Bool32 VKAPI_CALL HelloTriangleApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 																 [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -403,6 +409,7 @@ vk::Extent2D HelloTriangleApp::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR
 	if (capabilities.currentExtent.width != std::numeric_limits<std::uint32_t>::max()) {
 		return capabilities.currentExtent;
 	} else {
+		glfwGetFramebufferSize(window, reinterpret_cast<int *>(&largeur), reinterpret_cast<int *>(&hauteur));
 		vk::Extent2D actualExtent{ largeur, hauteur };
 		actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
 		actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
@@ -447,7 +454,8 @@ void HelloTriangleApp::createSwapChain() {
 	createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
 	createInfo.presentMode = presentMode;
 	createInfo.clipped = true;
-	createInfo.oldSwapchain = nullptr;
+	oldSwpChain = !this->swapChain ? nullptr : this->swapChain.release();
+	createInfo.oldSwapchain = oldSwpChain;
 	this->swapChain = this->device->createSwapchainKHRUnique(createInfo);
 	this->swapChainImages = this->device->getSwapchainImagesKHR(*this->swapChain);
 }
@@ -560,7 +568,7 @@ void HelloTriangleApp::createGraphicsPipeline() {
 			{}, 2, shaderStages, &vertexInputInfo, &inputAssembly, nullptr, &viewportState, &rasterizer, &multisampling,
 			nullptr, &colorBlending,
 			nullptr, *pipelineLayout, *renderPass, 0 };
-	this->pipeline = this->device->createGraphicsPipelineUnique({}, pipelineInfo);
+	this->pipeline = this->device->createGraphicsPipelineUnique({}, pipelineInfo).value;
 }
 
 vk::UniqueShaderModule HelloTriangleApp::createShaderModule(const std::vector<char> &code) {
@@ -645,4 +653,44 @@ void HelloTriangleApp::createSyncObjects() {
 		this->renderFinishedSemaphores[i] = this->device->createSemaphoreUnique({});
 		this->inFlightFences[i] = this->device->createFenceUnique(fenceInfo);
 	}
+}
+
+void HelloTriangleApp::recreateSwapChain() {
+	glfwGetFramebufferSize(window, reinterpret_cast<int *>(&largeur), reinterpret_cast<int *>(&hauteur));
+	while (largeur == 0 || hauteur == 0) {
+		glfwGetFramebufferSize(window, reinterpret_cast<int *>(&largeur), reinterpret_cast<int *>(&hauteur));
+		glfwWaitEvents();
+	}
+
+	this->device->waitIdle();
+
+	cleanupSwapChain();
+
+	createSwapChain();
+	createImageViews();
+	createRenderPass();
+	createGraphicsPipeline();
+	createFramebuffers();
+	createCommandBuffers();
+}
+
+void HelloTriangleApp::cleanupSwapChain() {
+	for (auto &framebuffer : swapChainFramebuffers) {
+//		device->destroyFramebuffer(framebuffer.release());
+		framebuffer.reset(); // Équivalent du dessus
+	}
+
+	for (auto &command_buffer : commandBuffers) {
+		command_buffer.reset();
+	}
+
+	pipeline.reset();
+	pipelineLayout.reset();
+	renderPass.reset();
+
+	for (auto &image_view : swapChainImageViews) {
+		image_view.reset();
+	}
+
+	this->device->destroy(oldSwpChain, {});
 }
